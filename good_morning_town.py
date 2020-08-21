@@ -12,7 +12,9 @@ INIT_GAME_STATE = {
         'role': DEFAULT_ROLE,
         'candidate': None,
         'is_candidate': False,
-        'kill_vote': False
+        'kill_vote': False,
+        'murder_attempts': 0,
+        'has_attempted_murder': False
         } for player in PLAYERS
     }
 
@@ -109,6 +111,18 @@ def clear_votes():
             game_state[player]['is_candidate'] = False
             game_state[player]['kill_vote'] = False
 
+
+def check_victory():
+    game_state = load_game_state()
+    alive_by_role_status = dict(Counter([player[1]['role'] for player in game_state.items() if player[1]['alive']]).most_common())
+    if not alive_by_role_status.get('murderer'):
+        print('The Town has won! All murderers have been killed!')
+        quit()
+    if not alive_by_role_status.get('civilian') and not alive_by_role_status.get('detective'):
+        print('The Murderers have won! All civilians are dead!')
+        quit()
+
+
 def end_day():
     # Recurring function every night at 21:00
     candidate = get_candidate()
@@ -126,21 +140,56 @@ def end_day():
     clear_votes()
     # Send message to group
     print(f'{candidate} has been {verdict}! Good night town!')
+    check_victory()
     pass
+
+
+def detect(detective, other_player):
+    game_state = load_game_state()
+    if game_state[detective]['role'] == 'detective':
+        role = game_state[other_player]['role']
+        print(f"{other_player} is a {role}")
+        return role
+
+def murder(murderer, other_player):
+    with update_game_state() as game_state:
+        if game_state[murderer]['role'] == 'murderer' and not game_state[murderer]['has_attempted_murder']:
+            if game_state[other_player]['alive']:
+                game_state[other_player]['murder_attempts'] += 1
+                game_state[murderer]['has_attempted_murder'] = True
+                print(f"Attempted to murder {other_player}")
+            else:
+                print(f"{other_player} is already dead! Try again!")
+
 
 def get_alive_status():
     game_state = load_game_state()
     alive_status = {player[0]: player[1]['alive'] for player in game_state.items()}
     return alive_status
-        
+    
+
+def check_and_execute_if_murder_occured():
+    with update_game_state() as game_state:
+        number_of_murderers = [player[1]['role'] for player in game_state.items() if player[1]['alive']].count('murderer')
+        if number_of_murderers:
+            for player in game_state:
+                if game_state[player]['murder_attempts'] == number_of_murderers:
+                    game_state[player]['alive'] = False
+                    return player
+
 
 def begin_day():
     # Recurring function every morning at 9:00
+    murdered = check_and_execute_if_murder_occured()
+    if not murdered:
+        murdered = 'nobody'
     # Send message to group
-    print('Good Morning Town! Tonight: x has been killed. This is that alive status:')
+    print(f'Good Morning Town! Tonight {murdered} has been killed! This is that alive status:')
     print(get_alive_status())
+    check_victory()
 
 
+# EXAMPLE GAME FLOW
 initiate_game()
 vote1()
 vote_on_candidate('noam', 'yuval')
@@ -152,8 +201,9 @@ vote_on_kill('yoav', True)
 vote_on_kill('alon', True)
 vote_on_kill('elad', True)
 end_day()
+detect('ido', 'elad')
+murder('noam', 'yoav')
+murder('ohad', 'yoav')
 begin_day()
 
-
 #TODO: Write regex for all functions except recurring ones.
-pass
