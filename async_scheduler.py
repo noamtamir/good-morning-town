@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime, timedelta, timezone
+from config import ASYNC_TASKS
 
 TLV = timezone(timedelta(hours=3))
 
@@ -22,9 +23,10 @@ async def run_at(dt, coro):
 
 def schedule_next_day_at(time, func):
     hour, minute = time
-    asyncio.ensure_future(
+    task = asyncio.ensure_future(
             run_at(
-                (datetime.now(tz=TLV) + timedelta(day=1)).replace(hour=hour, minute=min, second=0, microsecond=0),
+                (datetime.now(tz=TLV) + timedelta(days=1)).replace(hour=hour, minute=min, second=0, microsecond=0),
                 func()
             )
         )
+    ASYNC_TASKS.append(task)

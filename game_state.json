@@ -1,1 +1,86 @@
-{"noam": {"alive": true, "role": "civilian", "candidate": null, "is_candidate": false, "kill_vote": false, "murder_attempts": 0, "has_attempted_murder": false}, "yuval": {"alive": false, "role": "civilian", "candidate": null, "is_candidate": false, "kill_vote": false, "murder_attempts": 0, "has_attempted_murder": false}, "yoav": {"alive": true, "role": "murderer", "candidate": null, "is_candidate": false, "kill_vote": false, "murder_attempts": 1, "has_attempted_murder": false}, "alon": {"alive": true, "role": "civilian", "candidate": null, "is_candidate": false, "kill_vote": false, "murder_attempts": 0, "has_attempted_murder": false}, "ohad": {"alive": true, "role": "murderer", "candidate": null, "is_candidate": false, "kill_vote": false, "murder_attempts": 0, "has_attempted_murder": true}, "ido": {"alive": true, "role": "detective", "candidate": null, "is_candidate": false, "kill_vote": false, "murder_attempts": 0, "has_attempted_murder": false}, "elad": {"alive": true, "role": "civilian", "candidate": null, "is_candidate": false, "kill_vote": false, "murder_attempts": 0, "has_attempted_murder": false}}
+{
+    "noam": {
+        "name": "noam",
+        "user_id": "@noamtamir:matrix.org",
+        "room_id": "",
+        "is_alive": true,
+        "role": "detective",
+        "candidate": "noam",
+        "is_candidate": false,
+        "kill_vote": false,
+        "murder_attempts": 0,
+        "has_attempted_murder": false
+    },
+    "yuval": {
+        "name": "yuval",
+        "user_id": "@whatsapp_972546685339:yoavmoshe.com",
+        "room_id": "",
+        "is_alive": true,
+        "role": "murderer",
+        "candidate": null,
+        "is_candidate": false,
+        "kill_vote": false,
+        "murder_attempts": 0,
+        "has_attempted_murder": false
+    },
+    "yoav": {
+        "name": "yoav",
+        "user_id": "@chat:yoavmoshe.com",
+        "room_id": "",
+        "is_alive": true,
+        "role": "civilian",
+        "candidate": null,
+        "is_candidate": false,
+        "kill_vote": false,
+        "murder_attempts": 0,
+        "has_attempted_murder": false
+    },
+    "alon": {
+        "name": "alon",
+        "user_id": "@whatsapp_972546685339:yoavmoshe.com",
+        "room_id": "",
+        "is_alive": true,
+        "role": "murderer",
+        "candidate": null,
+        "is_candidate": false,
+        "kill_vote": false,
+        "murder_attempts": 0,
+        "has_attempted_murder": false
+    },
+    "ohad": {
+        "name": "ohad",
+        "user_id": "@whatsapp_972546685339:yoavmoshe.com",
+        "room_id": "",
+        "is_alive": true,
+        "role": "civilian",
+        "candidate": null,
+        "is_candidate": false,
+        "kill_vote": false,
+        "murder_attempts": 0,
+        "has_attempted_murder": false
+    },
+    "ido": {
+        "name": "ido",
+        "user_id": "@whatsapp_972546685339:yoavmoshe.com",
+        "room_id": "",
+        "is_alive": true,
+        "role": "civilian",
+        "candidate": null,
+        "is_candidate": false,
+        "kill_vote": false,
+        "murder_attempts": 0,
+        "has_attempted_murder": false
+    },
+    "elad": {
+        "name": "elad",
+        "user_id": "@whatsapp_972546685339:yoavmoshe.com",
+        "room_id": "",
+        "is_alive": true,
+        "role": "civilian",
+        "candidate": null,
+        "is_candidate": false,
+        "kill_vote": false,
+        "murder_attempts": 0,
+        "has_attempted_murder": false
+    }
+}

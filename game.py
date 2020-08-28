@@ -4,16 +4,17 @@ from random import sample
 from collections import Counter
 from datetime import datetime, timedelta
 from contextlib import contextmanager
-from config import config, CURRENT_GAME
+from config import config, CURRENT_GAME, ASYNC_TASKS
 from send_message import send_message_to_room
 from async_scheduler import run_at, wait_for, TLV, schedule_next_day_at
 from players import Players
+from db import JsonDb
 
 class Game:
     def __init__(self):
         self.players = Players.from_config(config.PLAYERS)
-        self.game_state = {player: player for player in self.players}
         self.candidate = None
+        self.db = JsonDb()
 
     @property
     def players_by_user_id(self):
@@ -22,11 +23,12 @@ class Game:
     def initiate(self):
         chosen_players = sample(self.players, 3)
         for player in chosen_players[:2]:
-            self.game_state[player].role = 'murderer'
-        self.game_state[chosen_players[2]].role = 'detective'
+            player.role = 'murderer'
+        chosen_players[2].role = 'detective'
         self.declare_new_game()
         self.send_roles_to_players()
         self.schedule_votes()
+        self.db.update_db(self)
 
     @staticmethod
     def declare_new_game():
@@ -53,19 +55,18 @@ Blah blah blah...
         self.check_time_and_schedule(now, scheduled_vote2, self.vote2)
         self.check_time_and_schedule(now, scheduled_end_day, self.end_day)
         self.check_time_and_schedule(now, scheduled_begin_day, self.begin_day)
-        
-
     
     @staticmethod
     def check_time_and_schedule(now, scheduled, func):
         if now > scheduled:
-            scheduled += timedelta(day=1)
-        asyncio.ensure_future(
+            scheduled += timedelta(days=1)
+        task = asyncio.ensure_future(
             run_at(
                 scheduled,
                 func()
             )
         )
+        ASYNC_TASKS.append(task)
 
     async def vote1(self):
         send_message_to_room(
@@ -76,8 +77,6 @@ Just type 'candidate' and the name of your candidate!
             '''
         )
         schedule_next_day_at((20,0), self.vote1)
-
-        
 
     async def vote2(self):
         candidate = determine_candidate()
@@ -95,6 +94,7 @@ Just type 'kill' or 'save'!
         candidate = counter.most_common(1)[0][0] # If tied, then just pick the first one.
         candidate.is_candidate = True
         self.candidate = candidate
+        self.db.update_db(self)
         return candidate
 
     def vote_on_candidate(self, user_id, candidate):
@@ -107,9 +107,10 @@ Just type 'kill' or 'save'!
         player = self.players_by_user_id[user_id]
         if player.is_alive:
             setattr(player, field, value)
+        self.db.update_db(self)
     
     async def end_day(self):
-        counter = Counter([self.game_state[player]['kill_vote'] for player in self.players])
+        counter = Counter([self.player.kill_vote for player in self.players])
         accumulated_votes = dict(counter.most_common())
         alive = True
         if accumulated_votes[True] > accumulated_votes[False]:
@@ -124,14 +125,13 @@ Just type 'kill' or 'save'!
         self.check_victory()
         schedule_next_day_at((21,0), self.end_day)
 
-
     def clear_votes(self):
         for player in self.players:
-            self.game_state[player].candidate = None
-            self.game_state[player].is_candidate = False
-            self.game_state[player].kill_vote = False
+            self.player.candidate = None
+            self.player.is_candidate = False
+            self.player.kill_vote = False
         self.candidate = None
-
+        self.db.update_db(self)
 
     def check_victory(self):
         alive_by_role_status = dict(Counter([player.role for player in self.players if player.is_alive]).most_common())
@@ -141,16 +141,20 @@ Just type 'kill' or 'save'!
         if not alive_by_role_status.get('civilian') and not alive_by_role_status.get('detective'):
             send_message_to_room('The Murderers have won! All civilians are dead!')
             self.cleanup_game()
-        
+
     def cleanup_game(self):
+        global CURRENT_GAME
         CURRENT_GAME = None
-        #TODO: initiate new game? anything else to clean up? especially, need to find a way to clean up async tasks.
+        for task in ASYNC_TASKS:
+            task.cancel()
+        self.db.update_db(self)
+        #TODO: initiate new game?
 
     def detect(self, user_id, other_player_user_id):
         detective = self.players_by_user_id[user_id]
         other_player = self.players_by_user_id[other_player_user_id]
-        if self.game_state[detective].role == 'detective':
-            role = self.game_state[other_player].role
+        if self.detective.role == 'detective':
+            role = self.other_player.role
             return role
         else:
             return '... Hey! Wait a minute! You are not a detective!'
@@ -158,14 +162,15 @@ Just type 'kill' or 'save'!
     def murder(self, user_id, other_player_user_id):
         murderer = self.players_by_user_id[user_id]
         other_player = self.players_by_user_id[other_player_user_id]
-        if not self.game_state[murderer].role == 'murderer':
+        if not self.murderer.role == 'murderer':
             return "You are not a murderer!"
-        if self.game_state[murderer].has_attempted_murder:
+        if self.murderer.has_attempted_murder:
             return "You have already attempted murder tonight!"
-        if self.game_state[murderer].role == 'murderer' and not self.game_state[murderer].has_attempted_murder:
-            if self.game_state[other_player].is_alive:
-                self.game_state[other_player].murder_attempts += 1
-                self.game_state[murderer].has_attempted_murder = True
+        if self.murderer.role == 'murderer' and not self.murderer.has_attempted_murder:
+            if self.other_player.is_alive:
+                self.other_player.murder_attempts += 1
+                self.murderer.has_attempted_murder = True
+                self.db.update_db(self)
                 return f"Attempted to murder {other_player.name}"
             else:
                 return f"{other_player.name} is already dead! Try again!"
@@ -189,9 +194,10 @@ This is the alive status:
     def check_and_execute_if_murder_occured(self):
         number_of_murderers = [player.role for player in self.players if player.is_alive].count('murderer')
         if number_of_murderers:
-            for player in self.game_state:
-                if self.game_state[player].murder_attempts == number_of_murderers:
-                    self.game_state[player].is_alive = False
+            for player in self.players:
+                if self.player.murder_attempts == number_of_murderers:
+                    self.player.is_alive = False
+                    self.db.update_db(self)
                     return player
 
     def get_alive_status(self):
