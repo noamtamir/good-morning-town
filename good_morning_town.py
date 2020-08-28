@@ -2,9 +2,10 @@ import json
 from random import sample
 from collections import Counter
 from contextlib import contextmanager
+import asyncio
+from config import config
 
 
-PLAYERS = ['noam', 'yuval', 'yoav', 'alon', 'ohad', 'ido', 'elad']
 DEFAULT_ROLE = 'civilian'
 INIT_GAME_STATE = {
     player: {
@@ -15,7 +16,7 @@ INIT_GAME_STATE = {
         'kill_vote': False,
         'murder_attempts': 0,
         'has_attempted_murder': False
-        } for player in PLAYERS
+        } for player in config.PLAYERS
     }
 
 
@@ -58,7 +59,7 @@ def send_roles_to_players():
 
 
 def initiate_game():
-    chosen_players = sample(PLAYERS, 3)
+    chosen_players = sample(list(config.PLAYERS), 3)
     for player in chosen_players[:2]:
         INIT_GAME_STATE[player]['role'] = 'murderer'
     INIT_GAME_STATE[chosen_players[2]]['role'] = 'detective'
