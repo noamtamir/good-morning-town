@@ -11,6 +11,8 @@ class Player:
         self.murder_attempts = 0
         self.has_attempted_murder = False
         self.has_detected = False
+        self.has_protected = False
+        self.is_protected = False
     
     def __str__(self):
         return self.name
