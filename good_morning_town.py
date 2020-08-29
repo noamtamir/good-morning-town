@@ -1,3 +1,5 @@
+# This is the old functional version in which the main game logic was developed. Not very useful, but kept it here for history.
+
 import json
 from random import sample
 from collections import Counter
@@ -47,13 +49,13 @@ def update_player_field_if_alive(player, field, value):
 
 
 def declare_new_game():
-    #TODO: placeholder. write function
+    # placeholder
     # Send a message to the group with the game rules and declare that a new game has begun.
     print('Good Morning Town! A new game of The Town has now begun! Each of you has just received your role in a private message. The rules of the game are...')
 
 
 def send_roles_to_players():
-    #TODO: placeholder. write function
+    # placeholder
     game_state = load_game_state()
     print({player[0]: player[1]['role'] for player in game_state.items()})
 
@@ -69,7 +71,7 @@ def initiate_game():
 
 
 def vote1():
-    #TODO: placeholder. write function
+    # placeholder
     # Recurring function every night at 20:00
     # Send message to group
     print('Who should be sent to the gallow? You have until 20:30 to decide / change your mind.')
@@ -191,6 +193,7 @@ def begin_day():
 
 
 # EXAMPLE GAME FLOW
+'''
 initiate_game()
 vote1()
 vote_on_candidate('noam', 'yuval')
@@ -206,5 +209,4 @@ detect('ido', 'elad')
 murder('noam', 'yoav')
 murder('ohad', 'yoav')
 begin_day()
-
-#TODO: Write regex for all functions except recurring ones.
+'''

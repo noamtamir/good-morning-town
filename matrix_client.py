@@ -1,12 +1,13 @@
 import asyncio
 from nio import AsyncClient, MatrixRoom, RoomMessageText
-from config import config
-from messages import MessageFactory
+from config import config, ROOMS
+from messages import MessageFactory, InitGameMessage
 
 
 async def message_callback(room: MatrixRoom, event: RoomMessageText) -> None:
-    #TODO: distinguish between rooms
-    message = await MessageFactory.from_event(event)
+    if room.room_id not in ROOMS:
+        return
+    message = await MessageFactory.from_event(room, event)
     if message:
         message.execute()
     print(

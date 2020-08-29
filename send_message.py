@@ -8,5 +8,5 @@ async def send_message_to_room_async(message, room_id):
     return response
 
 def send_message_to_room(message, room_id=config.MAIN_ROOM_ID):
-    task = asyncio.ensure_future(send_message_to_room_async(message, room_id))
+    task = asyncio.create_task(send_message_to_room_async(message, room_id))
     ASYNC_TASKS.append(task)

@@ -4,6 +4,11 @@ PASSWORD: ''
 ACCESS_TOKEN: '' # can be found in element in Settings -> Help & About -> Advanced -> Acces Token
 MAIN_ROOM_ID: '' # can be found in room Settings -> Advanced -> Room Information -> Internal room ID
                  # (will look something like '!xxxxxxxxxxxxxxxxx:matrix.org')
+SCHEDULE:
+  VOTE1: '20:00'
+  VOTE2: '20:30'
+  END_DAY: '21:00'
+  BEGIN_DAY: '9:30'
 
 PLAYERS:
   player1:
@@ -16,4 +21,4 @@ PLAYERS:
     user_id: '' # '@player3:matrix.org'
     room_id: '' # '!xxxxxxxxxxxxxxxxx:matrix.org'
 
-#TODO: you need to set up the Main Room in advance, as well as a room with each player. All rooms should be unencrypted.
+#TODO: You need to set up the Main Room in advance, as well as a room with each player. All rooms should be unencrypted.
