@@ -19,7 +19,11 @@ To run just install all dependecies from `requirements.txt`, and run `python mat
 * Vote 1: Each citizen decalres, by name, who he thinks should be sent to the gallows. Vote ends at 20:30.
 * Vote 2: The citizens vote whether the citizen with the greatest amount of votes on the first vote, should be killed or saved, Vote ends at 21:00, and the citizen is either killed or saved accordingly.
 ### Night
-* During the night, the Detective can choose a player, and learn what his role is, secretly in a private message. Also the two Murderers can choose who they want to kill, secretly in a private message. If they both choose the same person, that person gets killed. If there is only 1 living Murderer, he always kills. On the following day, it is declared whether a murder has occured, and if so, who got killed.
+* During the night, the Detective can choose a player, and learn what his role is, secretly in a private message.
+* The two Murderers can choose who they want to kill, secretly in a private message. If they both choose the same person, that person gets killed. If there is only 1 living Murderer, he always kills.
+* The Policeman can choose to protect 1 Civilian during the night, and if the Murderers attempt to kill him, he is protected.
+* On the following day, it is declared whether a murder has occured, and if so, who got killed. If a murder was prevented, it will also be declared.
+### Victory
 * The Town, Civilians and Detective, win if both Murderers are dead. The Murderers win, when all but them are dead.
 
 ## WhatsApp Commands
@@ -40,4 +44,13 @@ These are commands that can only be sent in a private chat with the bot.
 > `town detect {name}`    
 > Learn the role of another player, only if you are the Detective.     
 > `town murder {name}`    
-> Attempt a murder during the night, only if you are a Murderer. If both Murderers pick the same player, he dies.` 
+> Attempt a murder during the night, only if you are a Murderer. If both Murderers pick the same player, he dies.   
+> `town protect {name}`    
+> Protect a Civilian from being murdered during the night, only if you are a Policeman.     
+> `town role`    
+> Learn what your role is in case you forgot.     
+### Global Commans
+These are commands that can only be sent anywhere.    
+
+> `town say hello`    
+> Check to see that the bot is active   

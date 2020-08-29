@@ -27,10 +27,11 @@ class Game:
 
     def initiate(self):
         self.in_progress = True
-        chosen_players = sample(self.players, 3)
+        chosen_players = sample(self.players, 4)
         for player in chosen_players[:2]:
             player.role = 'murderer'
         chosen_players[2].role = 'detective'
+        chosen_players[3].role = 'policeman'
         self.declare_new_game()
         self.send_roles_to_players()
         self.schedule_votes()
@@ -44,8 +45,8 @@ Good Morning Town!
 A new game of The Town has now begun!
 There are 2 Murderers among you! And they are trying to kill you every night!
 They succeed when they work together and both try to kill the same person.
-Luckily, you also have your trusty Detective to help you out. He goes out every night and investigates.
-Everynight, he figures out a role of one of you.
+Luckily, you have your trusty Policeman to help you out. He protects 1 Civilian every night.
+Also, the Detective goes out every night and investigates. Everynight, he figures out the role of one of you.
 Every evening, at 20:00 the Assembly will gather, and the Civilians of this town will vote on who they think the Murderer is.
 At 20:30 exactly, the votes will be collected, and the Accusee will be declared.
 A second vote will take place, and the Civilians will decide wether the Accusee should be sent to the gallow or not!
@@ -146,6 +147,7 @@ Just type 'town kill' or 'town save'!
 {self.accusee.name} has been {verdict}! Good night town!
 Murderers, if you wish to murder tonight, just type 'town murder' and the name of the person you wish to murder.
 Remember, you both have to pick the same person!
+Policeman, you can prevent such a murder from happening by protect 1 Civilian, just type 'town protect' and the name of the person you wish to protect.
 Detective, if you wish to find out the role a person, just type 'town detect' and the name of the person you wish to detect.
 Sweet dreams!
             '''
@@ -203,15 +205,30 @@ Sweet dreams!
             else:
                 return f"{other_player.name} is already dead! Try again!"
     
+    def protect(self, policeman, other_player):
+        if policeman.has_protected:
+            return "You have already protected once tonight!"
+        if policeman.role == 'policeman':
+            policeman.has_protected = True
+            other_player.is_protected = True
+            self.db.update_db(self)
+            return f'{other_player.name} will be protected tonight.'
+    
     async def begin_day(self):
         # Recurring function every morning at 9:00
-        murdered = self.check_and_execute_if_murder_occured()
-        if not murdered:
-            murdered = 'nobody'
+        player_to_be_murdered = self.check_murder_attempt()
+        if player_to_be_murdered:
+            if player_to_be_murdered.is_protected:
+                murder_message = f'Tonight, there was an attempt to murder {player_to_be_murdered.name}, but he was protected by the policeman!'
+            else:
+                self.execute_murder()
+                murder_message = f'Tonight, {player_to_be_murdered.name} has been killed!'
+        else:
+            murder_message = 'Tonight, nobody has been killed!'
         send_message_to_room(
             f'''
 Good Morning Town!
-Tonight {murdered} has been killed!
+{murder_message}
 This is the alive status:
 {self.get_alive_status()}
             '''
@@ -220,19 +237,23 @@ This is the alive status:
         self.check_victory()
         schedule_next_day_at(TIME_OF['BEGIN_DAY'].tuple, self.end_day)
 
-    def check_and_execute_if_murder_occured(self):
+    def check_murder_attempt(self):
         number_of_murderers = [player.role for player in self.players if player.is_alive].count('murderer')
         if number_of_murderers:
             for player in self.players:
                 if player.murder_attempts == number_of_murderers:
-                    player.is_alive = False
-                    self.db.update_db(self)
                     return player
+    
+    def execute_murder(self):
+        self.accusee.is_alive = False
+        self.db.update_db(self)
 
     def clear_night(self):
         for player in self.players:
             player.has_attempted_murder = False
             player.has_detected = False
+            player.has_protected = False
+            player.is_protected = False
         self.db.update_db(self)
 
     def get_alive_status(self):

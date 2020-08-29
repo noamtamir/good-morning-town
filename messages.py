@@ -43,11 +43,11 @@ class PublicAlivePermission(Permission):
     @property
     def authorized(self):
         authorized = False
-        if not self.room_id == config.MAIN_ROOM_ID:
-            send_message_to_room(f'{self.sender.name}, you must send this message in the group!', self.sender.room_id)
         if not self.sender.is_alive:
             send_message_to_room(f'{self.sender.name}, you are dead! You cannot vote!', self.sender.room_id)
-        if self.room_id == config.MAIN_ROOM_ID and self.sender.is_alive:
+        elif not self.room_id == config.MAIN_ROOM_ID:
+            send_message_to_room(f'{self.sender.name}, you must send this message in the group!', self.sender.room_id)
+        else:
             authorized = True
         return authorized
 
@@ -61,6 +61,14 @@ class PublicPermission(Permission):
             send_message_to_room(f'{self.sender.name}, you must send this message in the group!', self.sender.room_id)
             return False
 
+class PrivatePermission(Permission):
+    @property
+    def authorized(self):
+        if not self.room_id == self.sender.room_id:
+            send_message_to_room(f'{self.sender.name}, you must send this message in your private group chat!', self.room_id)
+            return False
+        return True
+
 
 class PrivateRolePermission(Permission):
     allowed_role = ''
@@ -69,12 +77,18 @@ class PrivateRolePermission(Permission):
         authorized = False
         if not self.room_id == self.sender.room_id:
             send_message_to_room(f'{self.sender.name}, you must send this message in your private group chat!', self.room_id)
-        if not self.sender.is_alive:
+        elif not self.sender.role == self.allowed_role:
+            send_message_to_room(f'{self.sender.name}, you are not a {self.allowed_role}!', self.room_id)
+        elif not self.sender.is_alive:
             send_message_to_room(f'{self.sender.name}, you are dead! You cannot play!', self.sender.room_id)
-        if not self.sender.role == self.allowed_role:
-            send_message_to_room(f'{self.sender.name}, you are not a {self.allowed_role}!', self.sender.room_id)
-        authorized = True
+        else: 
+            authorized = True
         return authorized
+
+
+class HelloMessage(Message):
+    def execute(self):
+        send_message_to_room(f'Hello {self.sender.name}', self.room_id)
 
 
 class InitGameMessage(Message, PublicPermission):
@@ -126,6 +140,20 @@ class MurderMessage(Message, PrivateRolePermission):
             send_message_to_room(response, self.sender.room_id)
 
 
+class ProtectMessage(Message, PrivateRolePermission):
+    allowed_role = 'policeman'
+    def execute(self):
+        if self.authorized:
+            response = CURRENT_GAME.protect(self.sender, self.execute_on)
+            send_message_to_room(response, self.sender.room_id)
+
+
+class RoleMessage(Message, PrivatePermission):
+    def execute(self):
+        if self.authorized:
+            send_message_to_room(f'You are a {self.sender.role}', self.sender.room_id)
+
+
 class MessageFactory:
     MESSAGE_TYPES = {
         'init': {
@@ -151,7 +179,20 @@ class MessageFactory:
         'murder': {
             'regex': 'town murder',
             'subclass': MurderMessage
+            },
+        'protect': {
+            'regex': 'town protect',
+            'subclass': ProtectMessage
+            },
+        'hello': {
+            'regex': 'town say hello',
+            'subclass': HelloMessage
+            },
+        'role': {
+            'regex': 'town role',
+            'subclass': RoleMessage
             }
+        
             
     }
     
