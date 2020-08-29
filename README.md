@@ -4,6 +4,10 @@
 In order for this bot to work, you need to add a `config.yml` file at the root. There is a `config-template.yml` which you can use to see how this file should look. The comments inisde are helpful and it is pretty self-explanatory.      
 You MUST set up the Main Room in advance, as well as a private room with each player, in element/whatsapp. You need to retreive all user_ids and room_ids and input them into the `config.yml` file. All rooms should be unencrypted.
 
+Runs with `python 3.8.5`    
+To run just install all dependecies from `requirements.txt`, and run `python matrix_client.py`
+
+
 ## Game Rules
 * When a game is initiated, 2 Murderers and 1 Detective are randomly chosen and secretly assigned to the players. The rest of the players are Innocent Civilians. All are notified about their role via a private message.
 * The game has three phases, NIGHT: 21:00 - 9:30, DAY: 9:00 - 20:00, and VOTES: 20:00-21:00.
