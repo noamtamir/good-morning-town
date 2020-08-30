@@ -1,4 +1,6 @@
 import yaml
+import sys
+import re
 
 class Config:
     def __init__(self, **entries):
@@ -14,6 +16,14 @@ class TimeFromString:
     @property
     def dict(self):
         return dict(hour=self.tuple[0], minute=self.tuple[1], second=0, microsecond=0)
+config_file = 'config.yml'
+try:
+    if re.search(r'\S+\.yml', sys.argv[1]):
+        config_file = sys.argv[1]
+except IndexError:
+    pass
+
+print(f'Loading config file: {config_file}')
 
 with open("config.yml", 'r') as f:
     config = Config(**yaml.safe_load(f))

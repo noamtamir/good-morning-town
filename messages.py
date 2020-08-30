@@ -120,7 +120,7 @@ class KillVoteMessage(Message, PublicAlivePermission):
 class AccuseMessage(Message, PublicAlivePermission):
     def execute(self):
         if self.authorized:
-            CURRENT_GAME.vote_on_accusee(self.sender, self.execute_on)
+            CURRENT_GAME.accuse(self.sender, self.execute_on)
             send_message_to_room(f'{self.sender.name}, you suggested to bring {self.execute_on.name} to the gallows!')
 
 

@@ -112,13 +112,12 @@ Just type 'town kill' or 'town save'!
     def determine_accusee(self):
         counter = Counter(list(filter(None, [player.accusee for player in self.players])))
         accusee = counter.most_common(1)[0][0] # If tied, then just pick the first one.
-        accusee = self.players_by_name[accusee]
         accusee.is_accused = True
         self.accusee = accusee
         self.db.update_db(self)
         return accusee
 
-    def vote_on_accusee(self, player, accusee):
+    def accuse(self, player, accusee):
         self.update_player_field_if_alive(player, 'accusee', accusee)
 
     def vote_on_kill(self, player, kill_vote):
@@ -135,7 +134,7 @@ Just type 'town kill' or 'town save'!
         counter = Counter([player.kill_vote for player in self.players])
         accumulated_votes = dict(counter.most_common())
         alive = True
-        if accumulated_votes[True] > accumulated_votes[False]:
+        if accumulated_votes.get(True, 0) > accumulated_votes.get(False, 0):
             alive = False
             verdict = 'killed'
             self.accusee.is_alive = alive
