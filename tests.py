@@ -1,5 +1,7 @@
-from unittest import TestCase, IsolatedAsyncioTestCase
+from unittest import TestCase, IsolatedAsyncioTestCase, mock
 from game import Game
+from messages import StatusMessage, WtfMessage
+
 
 class TestDetermineAccusee(TestCase):
     def setUp(self):

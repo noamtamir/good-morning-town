@@ -4,7 +4,7 @@ from random import sample
 from collections import Counter
 from datetime import datetime, timedelta
 from contextlib import contextmanager
-from config import config, CURRENT_GAME, ASYNC_TASKS, TIME_OF
+from config import config, ASYNC_TASKS, TIME_OF
 from send_message import send_message_to_room
 from async_scheduler import run_at, wait_for, TLV, schedule_next_day_at
 from players import Players, Player
@@ -15,7 +15,7 @@ class Game:
         self.in_progress = False
         self.players = Players.from_config(config.PLAYERS)
         self.accusee = Player()
-        self.db = NoDB() # if you want game state to be saved into .json file just switch to JsonDB()
+        self.db = JsonDB()
 
     @property
     def players_by_user_id(self):
@@ -27,6 +27,8 @@ class Game:
 
     def initiate(self):
         self.in_progress = True
+        self.players = Players.from_config(config.PLAYERS)
+        self.accusee = Player()
         chosen_players = sample(self.players, 4)
         for player in chosen_players[:2]:
             player.role = 'murderer'
@@ -53,7 +55,7 @@ A second vote will take place, and the Civilians will decide wether the Accusee 
 At 21:00 exactly, the Assembly will be ajurned, and the verdict will be declared, and executed.
 Thus, begins the night, where no Civilian is safe from the wrath of the Murderers...
 
-Each of you will now receive your role in a private message.
+Each of you will now receive your role in a private message. If you forget your role you can type 'town role' in your private chat.
 
 For detailed rules and commands of the game:
 https://github.com/noamtamir/good-morning-town/blob/master/README.md
@@ -171,15 +173,15 @@ Sweet dreams!
         if not alive_by_role_status.get('civilian') and not alive_by_role_status.get('detective'):
             send_message_to_room('The Murderers have won! All civilians are dead!')
             self.cleanup_game()
+            #TODO: initiate new game automaticaly?
 
     def cleanup_game(self):
         self.in_progress = False
-        global CURRENT_GAME
-        CURRENT_GAME = Game()
+        for player in self.players:
+            player.is_alive = False
+        self.db.clear_db()
         for task in ASYNC_TASKS:
             task.cancel()
-        self.db.update_db(self)
-        #TODO: initiate new game?
 
     def detect(self, detective, other_player):
         if detective.has_detected:

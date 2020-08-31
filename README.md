@@ -5,7 +5,8 @@ In order for this bot to work, you need to add a `config.yml` file at the root. 
 You MUST set up the Main Room in advance, as well as a private room with each player, in element/whatsapp. You need to retreive all user_ids and room_ids and input them into the `config.yml` file. All rooms should be unencrypted.
 
 Runs with `python 3.8.5`    
-To run just install all dependecies from `requirements.txt`, and run `python matrix_client.py`
+To run just install all dependecies from `requirements.txt`, and run `python matrix_client.py`.     
+Run `python matrix_client.py some_other_config.yml` to run with different configurations (different rooms for example).      
 
 
 ## Game Rules
@@ -49,8 +50,22 @@ These are commands that can only be sent in a private chat with the bot.
 > Protect a Civilian from being murdered during the night, only if you are a Policeman.     
 > `town role`    
 > Learn what your role is in case you forgot.     
-### Global Commans
-These are commands that can only be sent anywhere.    
+### Global Commands
+These are commands that can be sent anywhere.    
 
 > `town say hello`    
-> Check to see that the bot is active   
+> Check to see that the bot is active.       
+> `town status`    
+> Check who is alive and who is dead.       
+> `town wtf`    
+> When you're really pissed at the bot...       
+
+### Admin Commands
+These are commands that can only be sent by admin (declared in config.yml).    
+
+> `town admin quit`    
+> Quit game.       
+> `town admin restart`    
+> Restart game.       
+> `town admin terminate {name}`    
+> Terminate a player.       

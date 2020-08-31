@@ -1,8 +1,9 @@
 class Player:
-    def __init__(self, name='nobody', user_id='', room_id=''): #default, empty player
+    def __init__(self, name='nobody', user_id='', room_id='', is_admin=False): #default, empty player
         self.name = name
         self.user_id = user_id
-        self.room_id = room_id        
+        self.room_id = room_id   
+        self.is_admin = is_admin     
         self.is_alive = True
         self.role = 'civilian'
         self.accusee = None
@@ -23,4 +24,4 @@ class Player:
 class Players:
     @classmethod
     def from_config(cls, config):
-        return [Player(player, config[player]['user_id'], config[player]['room_id']) for player in config]
+        return [Player(player, config[player]['user_id'], config[player]['room_id'], config[player].get('is_admin', False)) for player in config]

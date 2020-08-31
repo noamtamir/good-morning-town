@@ -1,11 +1,14 @@
 import asyncio
 import re
-from config import CURRENT_GAME, config
+from config import config
 from abc import ABC, abstractmethod
 
 from game import Game
+from players import Player
 from send_message import send_message_to_room
+import requests
 
+CURRENT_GAME = None
 
 class Message(ABC):
     def __init__(self, room, event, msg_type):
@@ -30,6 +33,8 @@ class Message(ABC):
             match = re.search(player.name, self.body)
             if match:
                 return player
+        else:
+            return Player()
     
     @abstractmethod
     def execute(self): pass
@@ -61,6 +66,17 @@ class PublicPermission(Permission):
             send_message_to_room(f'{self.sender.name}, you must send this message in the group!', self.sender.room_id)
             return False
 
+
+class AdminPermission(Permission):
+    @property
+    def authorized(self):
+        if self.sender.is_admin:
+            return True
+        else:
+            send_message_to_room(f'{self.sender.name}, you are not admin!', self.room_id)
+            return False
+
+
 class PrivatePermission(Permission):
     @property
     def authorized(self):
@@ -89,6 +105,44 @@ class PrivateRolePermission(Permission):
 class HelloMessage(Message):
     def execute(self):
         send_message_to_room(f'Hello {self.sender.name}', self.room_id)
+
+
+class WtfMessage(Message):
+    def execute(self):
+        r = requests.get('https://insult.mattbas.org/api/insult')
+        send_message_to_room(r.text)
+
+
+class StatusMessage(Message):
+    def execute(self):
+        send_message_to_room(CURRENT_GAME.get_alive_status())
+
+
+class WhoIsAdminMessage(Message):
+    def execute(self):
+        send_message_to_room(f'{[player.name for player in CURRENT_GAME.players if player.is_admin][0]} is admin.')
+
+
+class QuitMessage(Message, AdminPermission):
+    def execute(self):
+        if self.authorized:
+            CURRENT_GAME.cleanup_game()
+            send_message_to_room('The game has been cancelled with great HUTZPA!')
+
+
+class RestartMessage(Message, AdminPermission):
+    def execute(self):
+        if self.authorized:
+            CURRENT_GAME.cleanup_game()
+            send_message_to_room('Starting a new game...')
+            CURRENT_GAME.initiate()
+
+
+class TerminateMessage(Message, AdminPermission):
+    def execute(self):
+        if self.authorized:
+            self.execute_on.is_alive = False
+            send_message_to_room(f'God terminated {self.execute_on.name}! Mwahahaha!!!')
 
 
 class InitGameMessage(Message, PublicPermission):
@@ -191,9 +245,31 @@ class MessageFactory:
         'role': {
             'regex': 'town role',
             'subclass': RoleMessage
-            }
-        
-            
+            },
+        'wtf': {
+            'regex': 'town wtf',
+            'subclass': WtfMessage
+        },
+        'status': {
+            'regex': 'town status',
+            'subclass': StatusMessage
+        },
+        'whoisadmin': {
+            'regex': 'town who is admin',
+            'subclass': WhoIsAdminMessage
+        },
+        'quit': {
+            'regex': 'town admin quit',
+            'subclass': QuitMessage
+        },
+        'restart': {
+            'regex': 'town admin restart',
+            'subclass': RestartMessage
+        },
+        'terminate': {
+            'regex': 'town admin terminate',
+            'subclass': TerminateMessage
+        }
     }
     
     @classmethod

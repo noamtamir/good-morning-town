@@ -1,5 +1,4 @@
 import json
-from config import CURRENT_GAME
 from players import Player
 from abc import ABC, abstractmethod
 
@@ -31,9 +30,7 @@ class JsonDB(BaseDB):
         return game_state
 
     @staticmethod
-    def save_game_state(game_state, clear=False):
-        if clear:
-            game_state = {}
+    def save_game_state(game_state):
         with open('game_state.json', 'w') as f:
             f.write(json.dumps(game_state))
     
@@ -42,4 +39,4 @@ class JsonDB(BaseDB):
         self.save_game_state(game_state)
             
     def clear_db(self):
-        self.save_game_state(clear=True)
+        self.save_game_state({})
