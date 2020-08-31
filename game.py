@@ -55,7 +55,7 @@ A second vote will take place, and the Civilians will decide wether the Accusee 
 At 21:00 exactly, the Assembly will be ajurned, and the verdict will be declared, and executed.
 Thus, begins the night, where no Civilian is safe from the wrath of the Murderers...
 
-Each of you will now receive your role in a private message. If you forget your role you can type 'town role' in your private chat.
+Each of you will now receive your role in a private message. If you forget your role, just type 'town role' in your private chat.
 
 For detailed rules and commands of the game:
 https://github.com/noamtamir/good-morning-town/blob/master/README.md
@@ -114,6 +114,7 @@ Just type 'town kill' or 'town save'!
     def determine_accusee(self):
         counter = Counter(list(filter(None, [player.accusee for player in self.players])))
         accusee = counter.most_common(1)[0][0] # If tied, then just pick the first one.
+        accusee = self.players_by_name[accusee]
         accusee.is_accused = True
         self.accusee = accusee
         self.db.update_db(self)

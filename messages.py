@@ -44,6 +44,16 @@ class Permission(ABC):
     def authorized(self): pass
 
 
+class IgnoreInstructionMessages:
+    @property
+    def is_instruction(self):
+        match = re.search(r'just type', self.body)
+        if match:
+            return True
+        else:
+            return False
+
+
 class PublicAlivePermission(Permission):
     @property
     def authorized(self):
@@ -157,7 +167,7 @@ class InitGameMessage(Message, PublicPermission):
                 send_message_to_room('A game is already in progress.')
 
 
-class KillVoteMessage(Message, PublicAlivePermission):
+class KillVoteMessage(Message, PublicAlivePermission, IgnoreInstructionMessages):
     @property
     def vote(self):
         if self.msg_type == 'kill':
@@ -166,44 +176,56 @@ class KillVoteMessage(Message, PublicAlivePermission):
             return False
 
     def execute(self):
+        if self.is_instruction:
+            return
         if self.authorized:
             accusee = CURRENT_GAME.vote_on_kill(self.sender, self.vote)
             send_message_to_room(f'{self.sender.name}, you voted to {self.msg_type} {accusee.name}!')
 
 
-class AccuseMessage(Message, PublicAlivePermission):
+class AccuseMessage(Message, PublicAlivePermission, IgnoreInstructionMessages):
     def execute(self):
+        if self.is_instruction:
+            return
         if self.authorized:
             CURRENT_GAME.accuse(self.sender, self.execute_on)
             send_message_to_room(f'{self.sender.name}, you suggested to bring {self.execute_on.name} to the gallows!')
 
 
-class DetectMessage(Message, PrivateRolePermission):
+class DetectMessage(Message, PrivateRolePermission, IgnoreInstructionMessages):
     allowed_role = 'detective'
     def execute(self):
+        if self.is_instruction:
+            return
         if self.authorized:
             response = CURRENT_GAME.detect(self.sender, self.execute_on)
             send_message_to_room(response, self.sender.room_id)
 
 
-class MurderMessage(Message, PrivateRolePermission):
+class MurderMessage(Message, PrivateRolePermission, IgnoreInstructionMessages):
     allowed_role = 'murderer'
     def execute(self):
+        if self.is_instruction:
+            return
         if self.authorized:
             response = CURRENT_GAME.murder(self.sender, self.execute_on)
             send_message_to_room(response, self.sender.room_id)
 
 
-class ProtectMessage(Message, PrivateRolePermission):
+class ProtectMessage(Message, PrivateRolePermission, IgnoreInstructionMessages):
     allowed_role = 'policeman'
     def execute(self):
+        if self.is_instruction:
+            return
         if self.authorized:
             response = CURRENT_GAME.protect(self.sender, self.execute_on)
             send_message_to_room(response, self.sender.room_id)
 
 
-class RoleMessage(Message, PrivatePermission):
+class RoleMessage(Message, PrivatePermission, IgnoreInstructionMessages):
     def execute(self):
+        if self.is_instruction:
+            return
         if self.authorized:
             send_message_to_room(f'You are a {self.sender.role}', self.sender.room_id)
 
