@@ -3,6 +3,9 @@ from unittest.mock import MagicMock, patch
 from game import Game
 from messages import StatusMessage, WtfMessage
 
+#TODO: write tests for db, game, players, messages.
+#TODO: add role class?
+#TODO: add single place for strings?
 
 def mock_send_message(*args):
     print(args[0])

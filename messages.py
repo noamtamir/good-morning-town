@@ -3,18 +3,17 @@ import re
 from config import config
 from abc import ABC, abstractmethod
 
+from db import JsonDB, InMemoryJsonDB
 from game import Game
 from players import Player
 from send_message import send_message_to_room
 import requests
 
-CURRENT_GAME = None
+db = JsonDB # Change DB type here
 
 class Message(ABC):
     def __init__(self, room, event, msg_type):
-        global CURRENT_GAME
-        if not CURRENT_GAME:
-            CURRENT_GAME = Game()
+        self.game = db.load_game()
         self.room_id = room.room_id
         self.event = event
         self.msg_type = msg_type
@@ -25,11 +24,11 @@ class Message(ABC):
     
     @property
     def sender(self):
-        return CURRENT_GAME.players_by_user_id[self.event.sender]
+        return self.game.players.get_by_user_id(self.event.sender)
     
     @property
     def execute_on(self):
-        for player in CURRENT_GAME.players:
+        for player in self.game.players.as_list:
             match = re.search(player.name, self.body)
             if match:
                 return player
@@ -125,27 +124,29 @@ class WtfMessage(Message):
 
 class StatusMessage(Message):
     def execute(self):
-        send_message_to_room(CURRENT_GAME.get_alive_status())
+        send_message_to_room(self.game.get_alive_status())
 
 
 class WhoIsAdminMessage(Message):
     def execute(self):
-        send_message_to_room(f'{[player.name for player in CURRENT_GAME.players if player.is_admin][0]} is admin.')
+        send_message_to_room(f'{[player.name for player in self.game.players.as_list if player.is_admin][0]} is admin.')
 
 
 class QuitMessage(Message, AdminPermission):
     def execute(self):
         if self.authorized:
-            CURRENT_GAME.cleanup_game()
+            self.game.cleanup_game()
+            db.clear()
             send_message_to_room('The game has been cancelled with great HUTZPA!')
 
 
 class RestartMessage(Message, AdminPermission):
     def execute(self):
         if self.authorized:
-            CURRENT_GAME.cleanup_game()
+            self.game.cleanup_game()
             send_message_to_room('Starting a new game...')
-            CURRENT_GAME.initiate()
+            self.game.initiate()
+            db.save_game(self.game)
 
 
 class TerminateMessage(Message, AdminPermission):
@@ -153,18 +154,18 @@ class TerminateMessage(Message, AdminPermission):
         if self.authorized:
             self.execute_on.is_alive = False
             send_message_to_room(f'God terminated {self.execute_on.name}! Mwahahaha!!!')
+            db.save_game(self.game)
 
 
 class InitGameMessage(Message, PublicPermission):
     def execute(self):
         if self.authorized:
-            global CURRENT_GAME
-            if not CURRENT_GAME:
-                CURRENT_GAME.initiate()
-            elif not CURRENT_GAME.in_progress:
-                CURRENT_GAME.initiate()
+            if not self.game.in_progress:
+                self.game.initiate()
+                db.save_game(self.game)
             else:
                 send_message_to_room('A game is already in progress.')
+        
 
 
 class KillVoteMessage(Message, PublicAlivePermission, IgnoreInstructionMessages):
@@ -179,7 +180,8 @@ class KillVoteMessage(Message, PublicAlivePermission, IgnoreInstructionMessages)
         if self.is_instruction:
             return
         if self.authorized:
-            accusee = CURRENT_GAME.vote_on_kill(self.sender, self.vote)
+            accusee = self.game.vote_on_kill(self.sender, self.vote)
+            db.save_game(self.game)
             send_message_to_room(f'{self.sender.name}, you voted to {self.msg_type} {accusee.name}!')
 
 
@@ -188,9 +190,10 @@ class AccuseMessage(Message, PublicAlivePermission, IgnoreInstructionMessages):
         if self.is_instruction:
             return
         if self.authorized:
-            CURRENT_GAME.accuse(self.sender, self.execute_on)
+            self.game.accuse(self.sender, self.execute_on)
+            db.save_game(self.game)
             send_message_to_room(f'{self.sender.name}, you suggested to bring {self.execute_on.name} to the gallows!')
-
+            
 
 class DetectMessage(Message, PrivateRolePermission, IgnoreInstructionMessages):
     allowed_role = 'detective'
@@ -198,7 +201,8 @@ class DetectMessage(Message, PrivateRolePermission, IgnoreInstructionMessages):
         if self.is_instruction:
             return
         if self.authorized:
-            response = CURRENT_GAME.detect(self.sender, self.execute_on)
+            response = self.game.detect(self.sender, self.execute_on)
+            db.save_game(self.game)
             send_message_to_room(response, self.sender.room_id)
 
 
@@ -208,7 +212,8 @@ class MurderMessage(Message, PrivateRolePermission, IgnoreInstructionMessages):
         if self.is_instruction:
             return
         if self.authorized:
-            response = CURRENT_GAME.murder(self.sender, self.execute_on)
+            response = self.game.murder(self.sender, self.execute_on)
+            db.save_game(self.game)
             send_message_to_room(response, self.sender.room_id)
 
 
@@ -218,7 +223,8 @@ class ProtectMessage(Message, PrivateRolePermission, IgnoreInstructionMessages):
         if self.is_instruction:
             return
         if self.authorized:
-            response = CURRENT_GAME.protect(self.sender, self.execute_on)
+            response = self.game.protect(self.sender, self.execute_on)
+            db.save_game(self.game)
             send_message_to_room(response, self.sender.room_id)
 
 

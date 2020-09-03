@@ -22,10 +22,9 @@ async def run_at(dt, coro):
 
 
 def schedule_next_day_at(time, func):
-    hour, minute = time
     task = asyncio.create_task(
             run_at(
-                (datetime.now(tz=TLV) + timedelta(days=1)).replace(hour=hour, minute=minute, second=0, microsecond=0),
+                (datetime.now(tz=TLV) + timedelta(days=1)).replace(**time),
                 func()
             )
         )
