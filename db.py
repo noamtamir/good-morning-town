@@ -21,20 +21,24 @@ class InMemoryJsonDB(BaseDB):
     
     @staticmethod
     def save_game(game):
+        in_memory_file.truncate(0)
+        in_memory_file.seek(0)
         in_memory_file.write(game.to_json())
 
     @classmethod
     def load_game(cls):
-        data = json.loads(in_memory_file.getvalue())
+        data = in_memory_file.getvalue()
         if not data:
             game = Game()
             cls.save_game(game)
         else:
-            game = Game.from_dict(data)
+            game = Game.from_dict(json.loads(data))
         return game
     
     @staticmethod            
     def clear():
+        in_memory_file.truncate(0)
+        in_memory_file.seek(0)
         in_memory_file.write('{}')
 
 

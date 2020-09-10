@@ -40,6 +40,9 @@ class Players:
     
     @classmethod
     def from_dict(cls, data):
+        if not 'name' in data.keys():
+            for player_name, player_obj in data.items():
+                data[player_name]['name'] = player_name
         players = {player_name: Player.from_dict(player_data) for player_name, player_data in data.items()}
         return cls(players)
     

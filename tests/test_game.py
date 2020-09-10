@@ -1,6 +1,9 @@
 from unittest import TestCase
+from unittest.mock import patch, MagicMock
 from game import Game
 import json
+from datetime import datetime, timedelta
+from config import ASYNC_TASKS
 
 class TestGame(TestCase):
     def setUp(self):
@@ -15,3 +18,27 @@ class TestGame(TestCase):
         game = Game.from_dict(self.game_dict)
         j = game.to_json()
         self.assertEqual(json.loads(j), self.game_dict)
+
+    @patch('game.run_at', MagicMock(side_effect=lambda scheduled, func: f'run {func} at {scheduled}'))
+    @patch('game.asyncio.create_task', MagicMock(side_effect=lambda func: MagicMock(return_value=func)))
+    def test_check_time_and_schedule(self):
+        now = datetime.now()
+        scheduled = now+timedelta(hours=1)
+        Game.check_time_and_schedule(now, scheduled, lambda: 'func')
+        self.assertIn(MagicMock(), ASYNC_TASKS)
+
+# class TestGameAsync(IsolatedAsyncioTestCase):
+    
+        # if now > scheduled:
+        #     scheduled += timedelta(days=1)
+        # task = asyncio.create_task(
+        #     run_at(
+        #         scheduled,
+        #         func()
+        #     )
+        # )
+        # task.set_name(f'{str(func)} at {str(scheduled)}')
+        # ASYNC_TASKS.append(task)
+    
+    # def test_initiate(self):
+    #     pass
