@@ -1,42 +1,70 @@
 import json
 from players import Player
+from game import Game
 from abc import ABC, abstractmethod
+from io import StringIO
+
 
 class BaseDB:
-    @staticmethod
-    def load_game_state_from_game(game):
-        game_state = {player.name: player.__dict__ for player in game.players}
-        for player in game_state:
-            if type(game_state[player]['accusee']) is Player:
-                game_state[player]['accusee'] = game_state[player]['accusee'].name
-        return game_state
+    @abstractmethod
+    def save_game(self): pass
 
     @abstractmethod
-    def update_db(self, game): pass
+    def load_game(self): pass
+   
+    @abstractmethod
+    def clear(self): pass
+
+in_memory_file = StringIO()
+
+class InMemoryJsonDB(BaseDB):
     
-    @abstractmethod
-    def clear_db(self): pass
+    @staticmethod
+    def save_game(game):
+        in_memory_file.truncate(0)
+        in_memory_file.seek(0)
+        in_memory_file.write(game.to_json())
 
+    @classmethod
+    def load_game(cls):
+        data = in_memory_file.getvalue()
+        if not data:
+            game = Game()
+            cls.save_game(game)
+        else:
+            game = Game.from_dict(json.loads(data))
+        return game
+    
+    @staticmethod            
+    def clear():
+        in_memory_file.truncate(0)
+        in_memory_file.seek(0)
+        in_memory_file.write('{}')
 
-class NoDB(BaseDB):
-    def update_db(self, game): pass
-    def clear_db(self): pass
 
 class JsonDB(BaseDB):
     @staticmethod
-    def load_game_state_from_db():
-        with open('game_state.json', 'r') as f:
-            game_state = json.loads(f.read())
-        return game_state
-
-    @staticmethod
-    def save_game_state(game_state):
+    def save_game(game):
         with open('game_state.json', 'w') as f:
-            f.write(json.dumps(game_state))
+            f.write(game.to_json())
+
+    @classmethod
+    def load_game(cls):
+        try:
+            with open('game_state.json', 'r') as f:
+                data = f.read()
+                if not data:
+                    game = Game()
+                    cls.save_game(game)
+                else:
+                    game = Game.from_dict(json.loads(data))               
+            return game
+        except FileNotFoundError:
+            game = Game()
+            cls.save_game(game)
+            return game
     
-    def update_db(self, game):
-        game_state = self.load_game_state_from_game(game)
-        self.save_game_state(game_state)
-            
-    def clear_db(self):
-        self.save_game_state({})
+    @staticmethod            
+    def clear():
+        with open('game_state.json', 'w') as f:
+            f.write('{}')

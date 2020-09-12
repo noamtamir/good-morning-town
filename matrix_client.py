@@ -15,12 +15,13 @@ async def message_callback(room: MatrixRoom, event: RoomMessageText) -> None:
         f"{room.user_name(event.sender)} | {event.body}"
     )
 
+
 async def main() -> None:
     client = AsyncClient(config.HOST_URL, config.CLIENT_ID)
     client.add_event_callback(message_callback, RoomMessageText)
 
     print(await client.login(password=config.PASSWORD))
     # members = await client.joined_members(config.MAIN_ROOM_ID)
-    await client.sync_forever(timeout=30000) # milliseconds
+    await client.sync_forever(timeout=30000)  # milliseconds
 
 asyncio.get_event_loop().run_until_complete(main())
