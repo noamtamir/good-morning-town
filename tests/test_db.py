@@ -6,6 +6,7 @@ from db import JsonDB, InMemoryJsonDB, in_memory_file
 from game import Game
 import os
 
+
 class TestJsonDB(TestCase):
     def test_save_game(self):
         with open('game_state.json', 'w') as f:
@@ -36,21 +37,22 @@ class TestJsonDB(TestCase):
             keys = list(game_state.keys())
         self.assertEqual(keys, ['accusee', 'in_progress', 'players'])
 
-    def test_load_game(self): # depends on Game, Player, Players, and save_game()
+    def test_load_game(self):  # depends on Game, Player, Players, and save_game()
         with open('game_state.json', 'w') as f:
-            f.write('{"accusee": null, "in_progress": false, "players": null}')
+            f.write('{"accusee": "noam", "in_progress": false, "players": null}')
         game = JsonDB.load_game()
         self.assertIsInstance(game, Game)
-        with open('game_state.json', 'r') as f:
-            game_state = json.loads(f.read())
-            keys = list(game_state.keys())
-        self.assertEqual(keys, ['accusee', 'in_progress', 'players'])
+        self.assertEqual(game.accusee.name, 'noam')
+        game_dict = json.loads(game.to_json())
+        self.assertEqual(list(game_dict.keys()), [
+                         'accusee', 'in_progress', 'players'])
 
     def test_clear(self):
         JsonDB.clear()
         with open('game_state.json', 'r') as f:
             text = f.read()
         self.assertEqual(text, '{}')
+
 
 class TestInMemoryJsonDB(TestCase):
     def test_save_game(self):
@@ -67,10 +69,11 @@ class TestInMemoryJsonDB(TestCase):
         keys = list(json.loads(in_memory_file.getvalue()).keys())
         self.assertEqual(keys, ['accusee', 'in_progress', 'players'])
 
-    def test_load_game(self): # depends on Game, Player, Players, and save_game()
+    def test_load_game(self):  # depends on Game, Player, Players, and save_game()
         in_memory_file.truncate(0)
         in_memory_file.seek(0)
-        in_memory_file.write('{"accusee": null, "in_progress": false, "players": null}')
+        in_memory_file.write(
+            '{"accusee": null, "in_progress": false, "players": null}')
         game = InMemoryJsonDB.load_game()
         self.assertIsInstance(game, Game)
         keys = list(json.loads(in_memory_file.getvalue()).keys())

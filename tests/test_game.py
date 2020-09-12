@@ -4,6 +4,12 @@ from game import Game
 import json
 from datetime import datetime, timedelta
 from config import ASYNC_TASKS
+from messages import StatusMessage, WtfMessage
+from tests.test_utils import mock_send_message
+
+# TODO: test all game class
+# TODO: add role class?
+# TODO: add single place for strings?
 
 
 class TestGame(TestCase):
@@ -22,26 +28,53 @@ class TestGame(TestCase):
         j = game.to_json()
         self.assertEqual(json.loads(j), self.game_dict)
 
-    # @patch('game.run_at', MagicMock(side_effect=lambda scheduled, func: f'run {func} at {scheduled}'))
-    # @patch('game.asyncio.create_task', MagicMock(side_effect=lambda func: MagicMock(return_value=func)))
-    # def test_check_time_and_schedule(self):
-    #     now = datetime.now()
-    #     scheduled = now+timedelta(hours=1)
-    #     Game.check_time_and_schedule(now, scheduled, lambda: 'func')
-    #     self.assertIn(MagicMock(), ASYNC_TASKS)
 
-# class TestGameAsync(IsolatedAsyncioTestCase):
+class TestDetermineAccusee(TestCase):
+    def setUp(self):
+        self.game = Game()
+        self.game.players.as_list[0].accusee = self.game.players.as_list[1].name
 
-        # if now > scheduled:
-        #     scheduled += timedelta(days=1)
-        # task = asyncio.create_task(
-        #     run_at(
-        #         scheduled,
-        #         func()
-        #     )
-        # )
-        # task.set_name(f'{str(func)} at {str(scheduled)}')
-        # ASYNC_TASKS.append(task)
+    def test_determine_accusee(self):
+        self.game.determine_accusee()
+        self.assertEqual(self.game.players.as_list[1], self.game.accusee)
+        self.assertTrue(self.game.players.as_list[1].is_accused)
 
-    # def test_initiate(self):
-    #     pass
+
+@patch('game.send_message_to_room', MagicMock(side_effect=mock_send_message))
+class TestVote2(TestCase):
+    def setUp(self):
+        self.game = Game()
+        self.game.players.as_list[0].accusee = self.game.players.as_list[1].name
+
+    def test_vote2(self):
+        self.game.vote2()
+        self.assertEqual(self.game.players.as_list[1], self.game.accusee)
+        self.assertTrue(self.game.players.as_list[1].is_accused)
+
+
+@patch('game.send_message_to_room', MagicMock(side_effect=mock_send_message))
+class TestEndDay(TestCase):
+    def setUp(self):
+        self.game = Game()
+        self.game.players.as_list[4].role = 'murderer'
+        self.game.accusee = self.game.players.as_list[0]
+        for player in self.game.players.as_list:
+            player.kill_vote = True
+
+    def test_end_day(self):
+        self.assertTrue(self.game.players.as_list[0].is_alive)
+        self.game.end_day()
+        self.assertFalse(self.game.players.as_list[0].is_alive)
+
+
+@patch('game.send_message_to_room', MagicMock(side_effect=mock_send_message))
+class TestBeginDay(TestCase):
+    def setUp(self):
+        self.game = Game()
+        self.game.players.as_list[4].role = 'murderer'
+        self.game.players.as_list[3].murder_attempts = 1
+
+    def test_end_day(self):
+        self.assertTrue(self.game.players.as_list[3].is_alive)
+        self.game.begin_day()
+        self.assertFalse(self.game.players.as_list[3].is_alive)

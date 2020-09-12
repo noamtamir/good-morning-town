@@ -8,8 +8,10 @@ from game import Game
 from players import Player
 from send_message import send_message_to_room
 import requests
+from async_scheduler import schedule_votes
 
-db = JsonDB # Change DB type here
+db = JsonDB  # Change DB type here
+
 
 class Message(ABC):
     def __init__(self, room, event, msg_type):
@@ -17,15 +19,15 @@ class Message(ABC):
         self.room_id = room.room_id
         self.event = event
         self.msg_type = msg_type
-    
+
     @property
     def body(self):
         return self.event.body
-    
+
     @property
     def sender(self):
         return self.game.players.get_by_user_id(self.event.sender)
-    
+
     @property
     def execute_on(self):
         for player in self.game.players.as_list:
@@ -34,9 +36,10 @@ class Message(ABC):
                 return player
         else:
             return Player()
-    
+
     @abstractmethod
     def execute(self): pass
+
 
 class Permission(ABC):
     @abstractmethod
@@ -46,7 +49,7 @@ class Permission(ABC):
 class IgnoreInstructionMessages:
     @property
     def is_instruction(self):
-        match = re.search(r'just type', self.body)
+        match = re.search(r'[Jj]ust type', self.body)
         if match:
             return True
         else:
@@ -58,9 +61,11 @@ class PublicAlivePermission(Permission):
     def authorized(self):
         authorized = False
         if not self.sender.is_alive:
-            send_message_to_room(f'{self.sender.name}, you are dead! You cannot vote!', self.sender.room_id)
+            send_message_to_room(
+                f'{self.sender.name}, you are dead! You cannot vote!', self.sender.room_id)
         elif not self.room_id == config.MAIN_ROOM_ID:
-            send_message_to_room(f'{self.sender.name}, you must send this message in the group!', self.sender.room_id)
+            send_message_to_room(
+                f'{self.sender.name}, you must send this message in the group!', self.sender.room_id)
         else:
             authorized = True
         return authorized
@@ -72,7 +77,8 @@ class PublicPermission(Permission):
         if self.room_id == config.MAIN_ROOM_ID:
             return True
         else:
-            send_message_to_room(f'{self.sender.name}, you must send this message in the group!', self.sender.room_id)
+            send_message_to_room(
+                f'{self.sender.name}, you must send this message in the group!', self.sender.room_id)
             return False
 
 
@@ -82,7 +88,8 @@ class AdminPermission(Permission):
         if self.sender.is_admin:
             return True
         else:
-            send_message_to_room(f'{self.sender.name}, you are not admin!', self.room_id)
+            send_message_to_room(
+                f'{self.sender.name}, you are not admin!', self.room_id)
             return False
 
 
@@ -90,23 +97,28 @@ class PrivatePermission(Permission):
     @property
     def authorized(self):
         if not self.room_id == self.sender.room_id:
-            send_message_to_room(f'{self.sender.name}, you must send this message in your private group chat!', self.room_id)
+            send_message_to_room(
+                f'{self.sender.name}, you must send this message in your private group chat!', self.room_id)
             return False
         return True
 
 
 class PrivateRolePermission(Permission):
     allowed_role = ''
+
     @property
     def authorized(self):
         authorized = False
         if not self.room_id == self.sender.room_id:
-            send_message_to_room(f'{self.sender.name}, you must send this message in your private group chat!', self.room_id)
+            send_message_to_room(
+                f'{self.sender.name}, you must send this message in your private group chat!', self.room_id)
         elif not self.sender.role == self.allowed_role:
-            send_message_to_room(f'{self.sender.name}, you are not a {self.allowed_role}!', self.room_id)
+            send_message_to_room(
+                f'{self.sender.name}, you are not a {self.allowed_role}!', self.room_id)
         elif not self.sender.is_alive:
-            send_message_to_room(f'{self.sender.name}, you are dead! You cannot play!', self.sender.room_id)
-        else: 
+            send_message_to_room(
+                f'{self.sender.name}, you are dead! You cannot play!', self.sender.room_id)
+        else:
             authorized = True
         return authorized
 
@@ -129,7 +141,8 @@ class StatusMessage(Message):
 
 class WhoIsAdminMessage(Message):
     def execute(self):
-        send_message_to_room(f'{[player.name for player in self.game.players.as_list if player.is_admin][0]} is admin.')
+        send_message_to_room(
+            f'{[player.name for player in self.game.players.as_list if player.is_admin][0]} is admin.')
 
 
 class QuitMessage(Message, AdminPermission):
@@ -137,7 +150,8 @@ class QuitMessage(Message, AdminPermission):
         if self.authorized:
             self.game.cleanup_game()
             db.clear()
-            send_message_to_room('The game has been cancelled with great HUTZPA!')
+            send_message_to_room(
+                'The game has been cancelled with great HUTZPA!')
 
 
 class RestartMessage(Message, AdminPermission):
@@ -146,6 +160,7 @@ class RestartMessage(Message, AdminPermission):
             self.game.cleanup_game()
             send_message_to_room('Starting a new game...')
             self.game.initiate()
+            schedule_votes()
             db.save_game(self.game)
 
 
@@ -153,7 +168,8 @@ class TerminateMessage(Message, AdminPermission):
     def execute(self):
         if self.authorized:
             self.execute_on.is_alive = False
-            send_message_to_room(f'God terminated {self.execute_on.name}! Mwahahaha!!!')
+            send_message_to_room(
+                f'God terminated {self.execute_on.name}! Mwahahaha!!!')
             db.save_game(self.game)
 
 
@@ -162,10 +178,10 @@ class InitGameMessage(Message, PublicPermission):
         if self.authorized:
             if not self.game.in_progress:
                 self.game.initiate()
+                schedule_votes()
                 db.save_game(self.game)
             else:
                 send_message_to_room('A game is already in progress.')
-        
 
 
 class KillVoteMessage(Message, PublicAlivePermission, IgnoreInstructionMessages):
@@ -182,7 +198,8 @@ class KillVoteMessage(Message, PublicAlivePermission, IgnoreInstructionMessages)
         if self.authorized:
             accusee = self.game.vote_on_kill(self.sender, self.vote)
             db.save_game(self.game)
-            send_message_to_room(f'{self.sender.name}, you voted to {self.msg_type} {accusee.name}!')
+            send_message_to_room(
+                f'{self.sender.name}, you voted to {self.msg_type} {accusee.name}!')
 
 
 class AccuseMessage(Message, PublicAlivePermission, IgnoreInstructionMessages):
@@ -190,13 +207,15 @@ class AccuseMessage(Message, PublicAlivePermission, IgnoreInstructionMessages):
         if self.is_instruction:
             return
         if self.authorized:
-            self.game.accuse(self.sender, self.execute_on)
+            self.game.accuse(self.sender, self.execute_on.name)
             db.save_game(self.game)
-            send_message_to_room(f'{self.sender.name}, you suggested to bring {self.execute_on.name} to the gallows!')
-            
+            send_message_to_room(
+                f'{self.sender.name}, you suggested to bring {self.execute_on.name} to the gallows!')
+
 
 class DetectMessage(Message, PrivateRolePermission, IgnoreInstructionMessages):
     allowed_role = 'detective'
+
     def execute(self):
         if self.is_instruction:
             return
@@ -208,6 +227,7 @@ class DetectMessage(Message, PrivateRolePermission, IgnoreInstructionMessages):
 
 class MurderMessage(Message, PrivateRolePermission, IgnoreInstructionMessages):
     allowed_role = 'murderer'
+
     def execute(self):
         if self.is_instruction:
             return
@@ -219,6 +239,7 @@ class MurderMessage(Message, PrivateRolePermission, IgnoreInstructionMessages):
 
 class ProtectMessage(Message, PrivateRolePermission, IgnoreInstructionMessages):
     allowed_role = 'policeman'
+
     def execute(self):
         if self.is_instruction:
             return
@@ -233,7 +254,8 @@ class RoleMessage(Message, PrivatePermission, IgnoreInstructionMessages):
         if self.is_instruction:
             return
         if self.authorized:
-            send_message_to_room(f'You are a {self.sender.role}', self.sender.room_id)
+            send_message_to_room(
+                f'You are a {self.sender.role}', self.sender.room_id)
 
 
 class MessageFactory:
@@ -241,39 +263,39 @@ class MessageFactory:
         'init': {
             'regex': 'town init',
             'subclass': InitGameMessage
-            },
+        },
         'kill': {
             'regex': 'town kill',
             'subclass': KillVoteMessage
-            },
+        },
         'save': {
             'regex': 'town save',
             'subclass': KillVoteMessage
-            },
+        },
         'accuse': {
             'regex': 'town accuse',
             'subclass': AccuseMessage
-            },
+        },
         'detect': {
             'regex': 'town detect',
             'subclass': DetectMessage
-            },
+        },
         'murder': {
             'regex': 'town murder',
             'subclass': MurderMessage
-            },
+        },
         'protect': {
             'regex': 'town protect',
             'subclass': ProtectMessage
-            },
+        },
         'hello': {
             'regex': 'town say hello',
             'subclass': HelloMessage
-            },
+        },
         'role': {
             'regex': 'town role',
             'subclass': RoleMessage
-            },
+        },
         'wtf': {
             'regex': 'town wtf',
             'subclass': WtfMessage
@@ -299,7 +321,7 @@ class MessageFactory:
             'subclass': TerminateMessage
         }
     }
-    
+
     @classmethod
     async def from_event(cls, room, event):
         for msg_type in cls.MESSAGE_TYPES:

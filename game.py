@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 from contextlib import contextmanager
 from config import config, ASYNC_TASKS, SCHEDULED_TASKS, TIME_OF
 from send_message import send_message_to_room
-from async_scheduler import run_at, wait_for, TLV, schedule_next_day_at
 from players import Players, Player
+
 
 class Game:
     def __init__(self, in_progress=False, players=None, accusee=None):
@@ -15,13 +15,13 @@ class Game:
         self.players = players or Players.from_dict(config.PLAYERS)
         self.accusee = accusee or Player()
 
-    #TODO:
+    # TODO:
     @classmethod
     def from_dict(cls, data):
         in_progress = data.get('in_progress', False)
         players_json = data.get('players') or config.PLAYERS
         players = Players.from_dict(players_json)
-        accusee = players.get_by_name(data.get('accussee')) or Player()
+        accusee = players.get_by_name(data.get('accusee')) or Player()
         return cls(in_progress=in_progress, players=players, accusee=accusee)
 
     def to_json(self):
@@ -41,7 +41,6 @@ class Game:
         chosen_players[3].role = 'policeman'
         self.declare_new_game()
         self.send_roles_to_players()
-        self.schedule_votes()
 
     @staticmethod
     def declare_new_game():
@@ -68,28 +67,10 @@ https://github.com/noamtamir/good-morning-town/blob/master/README.md
 
     def send_roles_to_players(self):
         for player in self.players.as_list:
-            send_message_to_room(f'Hey {player.name}! The game has begun and you are a {player.role}! Have fun!', player.room_id)
-    
-    def schedule_votes(self):
-        now = datetime.now(tz=TLV)
-        for task, time in SCHEDULED_TASKS.items():
-            scheduled_task_time = now.replace(**time)
-            self.check_time_and_schedule(now, scheduled_task_time, eval(f'self.{task}'))
-    
-    @staticmethod
-    def check_time_and_schedule(now, scheduled, func):
-        if now > scheduled:
-            scheduled += timedelta(days=1)
-        task = asyncio.create_task(
-            run_at(
-                scheduled,
-                func()
-            )
-        )
-        task.set_name(f'{str(func)} at {str(scheduled)}')
-        ASYNC_TASKS.append(task)
+            send_message_to_room(
+                f'Hey {player.name}! The game has begun and you are a {player.role}! Have fun!', player.room_id)
 
-    async def vote1(self):
+    def vote1(self):
         send_message_to_room(
             '''
 Who should we send to the gallow tonight?
@@ -97,26 +78,38 @@ You have until 20:30 to decide / change your mind.
 Just type 'town accuse' and the name of your accusee!
             '''
         )
-        schedule_next_day_at(TIME_OF['vote1'], self.vote1)
 
-    async def vote2(self):
+    def vote2(self):
         accusee = self.determine_accusee()
-        send_message_to_room(
-            f'''
+        if accusee:
+            send_message_to_room(
+                f'''
 Do you think {accusee.name} should be sent to the gallow?
 You have until 21:00 to decide / change your mind.
 Just type 'town kill' or 'town save'!
-            '''
-        )
-        schedule_next_day_at(TIME_OF['vote2'], self.vote2)
-    
+                '''
+            )
+        else:
+            send_message_to_room(
+                'Noboday has been accused! What a waste... stupid civilians...')
+
     def determine_accusee(self):
-        counter = Counter(list(filter(None, [player.accusee for player in self.players.as_list])))
-        accusee = counter.most_common(1)[0][0] # If tied, then just pick the first one.
-        accusee = self.players.get_by_name(accusee) #TODO: check this out
-        accusee.is_accused = True
-        self.accusee = accusee
-        return accusee
+        counter = Counter(
+            list(filter(None, [player.accusee for player in self.players.as_list])))
+        # If tied, then just pick the first one.
+        try:
+            accusee = counter.most_common(1)[0][0]
+        except IndexError:
+            return None
+        accusee = self.players.get_by_name(
+            accusee)  # TODO: check this out
+        if accusee:
+            accusee.is_accused = True
+            self.accusee = accusee
+            return accusee
+        else:
+            self.accusee = Player()
+            return None
 
     def accuse(self, player, accusee):
         self.update_player_field_if_alive(player, 'accusee', accusee)
@@ -129,29 +122,41 @@ Just type 'town kill' or 'town save'!
     def update_player_field_if_alive(self, player, field, value):
         if player.is_alive:
             setattr(player, field, value)
-    
-    async def end_day(self):
-        counter = Counter([player.kill_vote for player in self.players])
-        accumulated_votes = dict(counter.most_common())
-        if accumulated_votes.get(True, 0) > accumulated_votes.get(False, 0):
-            verdict = 'killed'
-            self.accusee.is_alive = False
-        else:
-            verdict = 'saved'
 
-        send_message_to_room(
-            f'''
+    def end_day(self):
+        if not self.accusee.name == 'nobody':
+            counter = Counter(
+                [player.kill_vote for player in self.players.as_list])
+            accumulated_votes = dict(counter.most_common())
+            if accumulated_votes.get(True, 0) > accumulated_votes.get(False, 0):
+                verdict = 'killed'
+                self.accusee.is_alive = False
+            else:
+                verdict = 'saved'
+
+            send_message_to_room(
+                f'''
 {self.accusee.name} has been {verdict}! Good night town!
 Murderers, if you wish to murder tonight, just type 'town murder' and the name of the person you wish to murder.
 Remember, you both have to pick the same person!
 Policeman, you can prevent such a murder from happening by protect 1 Civilian, just type 'town protect' and the name of the person you wish to protect.
 Detective, if you wish to find out the role a person, just type 'town detect' and the name of the person you wish to detect.
 Sweet dreams!
-            '''
-        )
+                '''
+            )
+        else:
+            send_message_to_room(
+                f'''
+Good night town!
+Murderers, if you wish to murder tonight, just type 'town murder' and the name of the person you wish to murder.
+Remember, you both have to pick the same person!
+Policeman, you can prevent such a murder from happening by protect 1 Civilian, just type 'town protect' and the name of the person you wish to protect.
+Detective, if you wish to find out the role a person, just type 'town detect' and the name of the person you wish to detect.
+Sweet dreams!
+                '''
+            )
         self.clear_votes()
         self.check_victory()
-        schedule_next_day_at(TIME_OF['end_day'], self.end_day)
 
     def clear_votes(self):
         for player in self.players.as_list:
@@ -161,14 +166,17 @@ Sweet dreams!
         self.accusee = Player()
 
     def check_victory(self):
-        alive_by_role_status = dict(Counter([player.role for player in self.players.as_list if player.is_alive]).most_common())
+        alive_by_role_status = dict(Counter(
+            [player.role for player in self.players.as_list if player.is_alive]).most_common())
         if not alive_by_role_status.get('murderer'):
-            send_message_to_room('The Town has won! All murderers have been killed!')
+            send_message_to_room(
+                'The Town has won! All murderers have been killed!')
             self.cleanup_game()
         if not alive_by_role_status.get('civilian') and not alive_by_role_status.get('detective'):
-            send_message_to_room('The Murderers have won! All civilians are dead!')
+            send_message_to_room(
+                'The Murderers have won! All civilians are dead!')
             self.cleanup_game()
-            #TODO: initiate new game automaticaly?
+            # TODO: initiate new game automaticaly?
 
     def cleanup_game(self):
         self.in_progress = False
@@ -182,6 +190,8 @@ Sweet dreams!
     def detect(self, detective, other_player):
         if detective.has_detected:
             return "You have already detected once tonight!"
+        if other_player.name == 'nobody':
+            return "You have attempted to detect nobody! Try again!"
         if detective.role == 'detective':
             role = other_player.role
             detective.has_detected = True
@@ -192,6 +202,8 @@ Sweet dreams!
             return "You are not a murderer!"
         if murderer.has_attempted_murder:
             return "You have already attempted murder tonight!"
+        if other_player.name == 'nobody':
+            return "You have attempted to murder nobody! Try again!"
         if murderer.role == 'murderer' and not murderer.has_attempted_murder:
             if other_player.is_alive:
                 other_player.murder_attempts += 1
@@ -199,23 +211,25 @@ Sweet dreams!
                 return f"Attempted to murder {other_player.name}"
             else:
                 return f"{other_player.name} is already dead! Try again!"
-    
+
     def protect(self, policeman, other_player):
         if policeman.has_protected:
             return "You have already protected once tonight!"
+        if other_player.name == 'nobody':
+            return "You have attempted to protect nobody! Try again!"
         if policeman.role == 'policeman':
             policeman.has_protected = True
             other_player.is_protected = True
             return f'{other_player.name} will be protected tonight.'
-    
-    async def begin_day(self):
+
+    def begin_day(self):
         # Recurring function every morning at 9:00
         player_to_be_murdered = self.check_murder_attempt()
         if player_to_be_murdered:
             if player_to_be_murdered.is_protected:
                 murder_message = f'Tonight, there was an attempt to murder {player_to_be_murdered.name}, but he was protected by the policeman!'
             else:
-                self.execute_murder()
+                self.execute_murder(player_to_be_murdered)
                 murder_message = f'Tonight, {player_to_be_murdered.name} has been killed!'
         else:
             murder_message = 'Tonight, nobody has been killed!'
@@ -229,17 +243,18 @@ This is the alive status:
         )
         self.clear_night()
         self.check_victory()
-        schedule_next_day_at(TIME_OF['begin_day'], self.begin_day)
 
     def check_murder_attempt(self):
-        number_of_murderers = [player.role for player in self.players.as_list if player.is_alive].count('murderer')
+        number_of_murderers = [
+            player.role for player in self.players.as_list if player.is_alive].count('murderer')
         if number_of_murderers:
             for player in self.players.as_list:
                 if player.murder_attempts == number_of_murderers:
                     return player
-    
-    def execute_murder(self):
-        self.accusee.is_alive = False
+
+    @staticmethod
+    def execute_murder(player):
+        player.is_alive = False
 
     def clear_night(self):
         for player in self.players.as_list:
@@ -249,5 +264,6 @@ This is the alive status:
             player.is_protected = False
 
     def get_alive_status(self):
-        alive_status = {player.name: player.is_alive for player in self.players.as_list}
+        alive_status = {
+            player.name: player.is_alive for player in self.players.as_list}
         return alive_status
