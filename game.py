@@ -33,6 +33,8 @@ class Game:
     def initiate(self):
         self.in_progress = True
         self.players = Players.from_dict(config.PLAYERS)
+        for player in self.players.as_list:
+            player.is_alive = True
         self.accusee = Player()
         chosen_players = sample(self.players.as_list, 4)
         for player in chosen_players[:2]:

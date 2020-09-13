@@ -78,3 +78,14 @@ class TestBeginDay(TestCase):
         self.assertTrue(self.game.players.as_list[3].is_alive)
         self.game.begin_day()
         self.assertFalse(self.game.players.as_list[3].is_alive)
+
+
+class TestGameStaticFunctions(TestCase):
+    def setUp(self):
+        self.game = Game()
+        self.game.players.as_list[0].is_alive = False
+
+    def test_get_alive_status(self):
+        alive_status = self.game.get_alive_status()
+        self.assertFalse(alive_status['noam'])
+        self.assertTrue(alive_status['yoav'])

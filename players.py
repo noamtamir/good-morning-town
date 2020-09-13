@@ -7,7 +7,7 @@ class Player:
         self.user_id = ''
         self.room_id = ''
         self.is_admin = False
-        self.is_alive = True
+        self.is_alive = False
         self.role = 'civilian'
         self.accusee = None
         self.is_accused = False
