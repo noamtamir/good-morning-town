@@ -14,11 +14,10 @@ db = JsonDB  # Change DB type here
 
 
 class Message(ABC):
-    def __init__(self, room, event, msg_type):
+    def __init__(self, room, event):
         self.game = db.load_game()
         self.room_id = room.room_id
         self.event = event
-        self.msg_type = msg_type
 
     @property
     def body(self):
@@ -31,7 +30,7 @@ class Message(ABC):
     @property
     def execute_on(self):
         for player in self.game.players.as_list:
-            match = re.search(player.name, self.body)
+            match = re.search(fr'\b{player.name}\b', self.body)
             if match:
                 return player
         else:
@@ -184,25 +183,7 @@ class InitGameMessage(Message, PublicPermission):
                 send_message_to_room('A game is already in progress.')
 
 
-class KillVoteMessage(Message, PublicAlivePermission, IgnoreInstructionMessages):
-    @property
-    def vote(self):
-        if self.msg_type == 'kill':
-            return True
-        else:
-            return False
-
-    def execute(self):
-        if self.is_instruction:
-            return
-        if self.authorized:
-            accusee = self.game.vote_on_kill(self.sender, self.vote)
-            db.save_game(self.game)
-            send_message_to_room(
-                f'{self.sender.name}, you voted to {self.msg_type} {accusee.name}!')
-
-
-class AccuseMessage(Message, PublicAlivePermission, IgnoreInstructionMessages):
+class KillMessage(Message, PublicAlivePermission, IgnoreInstructionMessages):
     def execute(self):
         if self.is_instruction:
             return
@@ -210,7 +191,7 @@ class AccuseMessage(Message, PublicAlivePermission, IgnoreInstructionMessages):
             self.game.accuse(self.sender, self.execute_on.name)
             db.save_game(self.game)
             send_message_to_room(
-                f'{self.sender.name}, you suggested to bring {self.execute_on.name} to the gallows!')
+                f'{self.sender.name}, you voted to kill {self.execute_on.name}!')
 
 
 class DetectMessage(Message, PrivateRolePermission, IgnoreInstructionMessages):
@@ -266,15 +247,7 @@ class MessageFactory:
         },
         'kill': {
             'regex': 'town kill',
-            'subclass': KillVoteMessage
-        },
-        'save': {
-            'regex': 'town save',
-            'subclass': KillVoteMessage
-        },
-        'accuse': {
-            'regex': 'town accuse',
-            'subclass': AccuseMessage
+            'subclass': KillMessage
         },
         'detect': {
             'regex': 'town detect',
@@ -327,4 +300,4 @@ class MessageFactory:
         for msg_type in cls.MESSAGE_TYPES:
             match = re.search(cls.MESSAGE_TYPES[msg_type]['regex'], event.body)
             if match:
-                return cls.MESSAGE_TYPES[msg_type]['subclass'](room, event, msg_type)
+                return cls.MESSAGE_TYPES[msg_type]['subclass'](room, event)

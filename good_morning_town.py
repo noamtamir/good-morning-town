@@ -15,7 +15,6 @@ INIT_GAME_STATE = {
         'role': DEFAULT_ROLE,
         'candidate': None,
         'is_candidate': False,
-        'kill_vote': False,
         'murder_attempts': 0,
         'has_attempted_murder': False
         } for player in config.PLAYERS

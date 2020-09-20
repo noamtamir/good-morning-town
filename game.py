@@ -54,9 +54,7 @@ There are 2 Murderers among you! And they are trying to kill you every night!
 They succeed when they work together and both try to kill the same person.
 Luckily, you have your trusty Policeman to help you out. He protects 1 Civilian every night.
 Also, the Detective goes out every night and investigates. Everynight, he figures out the role of one of you.
-Every evening, at 20:00 the Assembly will gather, and the Civilians of this town will vote on who they think the Murderer is.
-At 20:30 exactly, the votes will be collected, and the Accusee will be declared.
-A second vote will take place, and the Civilians will decide wether the Accusee should be sent to the gallow or not!
+Every evening, at 20:30 the Assembly will gather, and the Civilians of this town will vote on who they think the Murderer is.
 At 21:00 exactly, the Assembly will be ajurned, and the verdict will be declared, and executed.
 Thus, begins the night, where no Civilian is safe from the wrath of the Murderers...
 
@@ -72,28 +70,14 @@ https://github.com/noamtamir/good-morning-town/blob/master/README.md
             send_message_to_room(
                 f'Hey {player.name}! The game has begun and you are a {player.role}! Have fun!', player.room_id)
 
-    def vote1(self):
+    def vote(self):
         send_message_to_room(
             '''
 Who should we send to the gallow tonight?
-You have until 20:30 to decide / change your mind.
-Just type 'town accuse' and the name of your accusee!
+You have until 21:00 to decide.
+Just type 'town kill' and the name of the person you think is the murderer!
             '''
         )
-
-    def vote2(self):
-        accusee = self.determine_accusee()
-        if accusee:
-            send_message_to_room(
-                f'''
-Do you think {accusee.name} should be sent to the gallow?
-You have until 21:00 to decide / change your mind.
-Just type 'town kill' or 'town save'!
-                '''
-            )
-        else:
-            send_message_to_room(
-                'Noboday has been accused! What a waste... stupid civilians...')
 
     def determine_accusee(self):
         counter = Counter(
@@ -102,61 +86,31 @@ Just type 'town kill' or 'town save'!
         try:
             accusee = counter.most_common(1)[0][0]
         except IndexError:
-            return None
-        accusee = self.players.get_by_name(
-            accusee)  # TODO: check this out
+            return
+        accusee = self.players.get_by_name(accusee)
         if accusee:
             accusee.is_accused = True
             self.accusee = accusee
-            return accusee
         else:
             self.accusee = Player()
-            return None
+            return
 
     def accuse(self, player, accusee):
-        self.update_player_field_if_alive(player, 'accusee', accusee)
-
-    def vote_on_kill(self, player, kill_vote):
-        if not self.accusee.name == 'nobody':
-            self.update_player_field_if_alive(player, 'kill_vote', kill_vote)
-        return self.accusee
-
-    def update_player_field_if_alive(self, player, field, value):
-        if player.is_alive:
-            setattr(player, field, value)
+        setattr(player, 'accusee', accusee)
 
     def end_day(self):
-        if not self.accusee.name == 'nobody':
-            counter = Counter(
-                [player.kill_vote for player in self.players.as_list])
-            accumulated_votes = dict(counter.most_common())
-            if accumulated_votes.get(True, 0) > accumulated_votes.get(False, 0):
-                verdict = 'killed'
-                self.accusee.is_alive = False
-            else:
-                verdict = 'saved'
-
-            send_message_to_room(
-                f'''
-{self.accusee.name} has been {verdict}! Good night town!
+        self.determine_accusee()
+        self.accusee.is_alive = False
+        send_message_to_room(
+            f'''
+{self.accusee.name} has been killed! Good night town!
 Murderers, if you wish to murder tonight, just type 'town murder' and the name of the person you wish to murder.
 Remember, you both have to pick the same person!
 Policeman, you can prevent such a murder from happening by protect 1 Civilian, just type 'town protect' and the name of the person you wish to protect.
 Detective, if you wish to find out the role a person, just type 'town detect' and the name of the person you wish to detect.
 Sweet dreams!
                 '''
-            )
-        else:
-            send_message_to_room(
-                f'''
-Good night town!
-Murderers, if you wish to murder tonight, just type 'town murder' and the name of the person you wish to murder.
-Remember, you both have to pick the same person!
-Policeman, you can prevent such a murder from happening by protect 1 Civilian, just type 'town protect' and the name of the person you wish to protect.
-Detective, if you wish to find out the role a person, just type 'town detect' and the name of the person you wish to detect.
-Sweet dreams!
-                '''
-            )
+        )
         self.clear_votes()
         self.check_victory()
 
@@ -164,7 +118,6 @@ Sweet dreams!
         for player in self.players.as_list:
             player.accusee = None
             player.is_accused = False
-            player.kill_vote = False
         self.accusee = Player()
 
     def check_victory(self):
