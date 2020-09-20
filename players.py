@@ -11,7 +11,6 @@ class Player:
         self.role = 'civilian'
         self.accusee = None
         self.is_accused = False
-        self.kill_vote = False
         self.murder_attempts = 0
         self.has_attempted_murder = False
         self.has_detected = False
