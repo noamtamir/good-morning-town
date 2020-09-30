@@ -1,6 +1,6 @@
 import json
 import asyncio
-from random import sample
+from random import sample, choice
 from collections import Counter
 from datetime import datetime, timedelta
 from contextlib import contextmanager
@@ -92,7 +92,7 @@ Just type 'town kill' and the name of the person you think is the murderer!
             accusee.is_accused = True
             self.accusee = accusee
         else:
-            self.accusee = Player()
+            self.accusee = self.kill_random()
             return
 
     def accuse(self, player, accusee):
@@ -222,3 +222,9 @@ This is the alive status:
         alive_status = {
             player.name: player.is_alive for player in self.players.as_list}
         return alive_status
+
+    def kill_random(self):
+        alive_players = [player for player in self.players.as_list if player.is_alive]
+        player = choice(alive_players)
+        player.is_alive = False
+        return player
