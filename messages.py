@@ -242,55 +242,55 @@ class RoleMessage(Message, PrivatePermission, IgnoreInstructionMessages):
 class MessageFactory:
     MESSAGE_TYPES = {
         'init': {
-            'regex': 'town init',
+            'regex': '[Tt]own init',
             'subclass': InitGameMessage
         },
         'kill': {
-            'regex': 'town kill',
+            'regex': '[Tt]own kill',
             'subclass': KillMessage
         },
         'detect': {
-            'regex': 'town detect',
+            'regex': '[Tt]own detect',
             'subclass': DetectMessage
         },
         'murder': {
-            'regex': 'town murder',
+            'regex': '[Tt]own murder',
             'subclass': MurderMessage
         },
         'protect': {
-            'regex': 'town protect',
+            'regex': '[Tt]own protect',
             'subclass': ProtectMessage
         },
         'hello': {
-            'regex': 'town say hello',
+            'regex': '[Tt]own say hello',
             'subclass': HelloMessage
         },
         'role': {
-            'regex': 'town role',
+            'regex': '[Tt]own role',
             'subclass': RoleMessage
         },
         'wtf': {
-            'regex': 'town wtf',
+            'regex': '[Tt]own wtf',
             'subclass': WtfMessage
         },
         'status': {
-            'regex': 'town status',
+            'regex': '[Tt]own status',
             'subclass': StatusMessage
         },
         'whoisadmin': {
-            'regex': 'town who is admin',
+            'regex': '[Tt]own who is admin',
             'subclass': WhoIsAdminMessage
         },
         'quit': {
-            'regex': 'town admin quit',
+            'regex': '[Tt]own admin quit',
             'subclass': QuitMessage
         },
         'restart': {
-            'regex': 'town admin restart',
+            'regex': '[Tt]own admin restart',
             'subclass': RestartMessage
         },
         'terminate': {
-            'regex': 'town admin terminate',
+            'regex': '[Tt]own admin terminate',
             'subclass': TerminateMessage
         }
     }
